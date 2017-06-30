@@ -1,4 +1,5 @@
 import jieba # Not needed for char based dictionary.
+import random
 import numpy as np
 
 from itertools import chain # For merge two generator
@@ -20,7 +21,7 @@ class GossipingDataLoader(object):
         self.word2index = {self.UNKNOWN_TOKEN:0}
         self.index2word = [self.UNKNOWN_TOKEN]
         self.word_counter = None
-        self.num_different_words = 0
+        self.num_different_words = 1 # for UNKNOWN_TOKEN
 
     def load_dataset(self, dataset_path, max_length=None):
 
@@ -46,8 +47,16 @@ class GossipingDataLoader(object):
                 if type(max_length) is int:
                     if len(question) > max_length or len(answer) > max_length:
                         continue
-
                 self.qa_pairs.append([question,answer])
+
+    def sample(self, sample_num=5):
+
+        '''
+        Randomly sample q,a pairs
+        :param sample_num: 
+        :return: a list of q,a pairs
+        '''
+        return random.sample(self.qa_pairs, sample_num)
 
     def calculate_word_frequency(self):
 
@@ -118,11 +127,53 @@ class GossipingDataLoader(object):
         index = np.argmax(encoding)
         return self.index2word[index]
 
+    def word_to_index(self, word):
+
+        if word not in self.word2index:
+            return self.word2index[self.self.UNKNOWN_TOKEN]
+        else:
+            return self.word2index[word]
+
+    def index_to_word(self, index):
+
+        assert index >= 0 and index < self.num_different_words, \
+            "[Index to Word] : Index %d out of range[0,%d]" % (index, self.num_different_words-1)
+        return self.index2word[index]
+
+    def sentence_to_index(self, sentence):
+
+        index = []
+        words = self._word_segment(sentence)
+
+        for word in words:
+            index.append(self.word_to_index(word))
+        return index
+
+    def index_to_sentence(self, index):
+
+        sentence = ''
+
+        for idx in index:
+            sentence += self.index_to_word(idx)
+        return sentence
+
     def _clean_encoding_history(self):
 
         self.word2index = {self.UNKNOWN_TOKEN:0}
         self.index2word = [self.UNKNOWN_TOKEN]
-        self.num_different_words = 0
+        self.num_different_words = 1
+
+    def _word_segment(self, sentence):
+
+        '''
+        Return a word list segmented from sentence.
+        '''
+
+        if self.word_segment:
+            words = [word for word in jieba.cut(sentence)]
+        else:
+            words = sentence
+        return words
 
     def _build_onehot_encoding(self, sentence, unknown_bound):
 
@@ -133,19 +184,12 @@ class GossipingDataLoader(object):
         :return: None
         '''
 
-        words = []
-
-        if self.word_segment:
-            words = jieba.cut(sentence)
-        else:
-            words = sentence
+        words = self._word_segment(sentence)
 
         for word in words:
-
             if self.word_counter[word] <= unknown_bound:
                 word = self.UNKNOWN_TOKEN
-
             if word not in self.word2index:
-                self.num_different_words += 1
                 self.word2index[word] = self.num_different_words
                 self.index2word.append(word)
+                self.num_different_words += 1
