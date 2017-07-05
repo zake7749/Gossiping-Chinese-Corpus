@@ -1,38 +1,36 @@
-import jieba # Not needed for char based dictionary.
+import jieba  # Not needed for char based dictionary.
 import random
 import numpy as np
 
-from itertools import chain # For merge two generator
-from collections import defaultdict # For counter
+from itertools import chain
+from collections import defaultdict
+
 
 class GossipingDataLoader(object):
-
     def __init__(self, word_segment=False):
-
-        '''
+        """
         :param word_segment: ture for word based(use jieba), False for char based.
-        '''
-
+        """
         self.word_segment = word_segment
+        self.word_counter = None
 
         self.qa_pairs = None
-        self.UNKNOWN_TOKEN = 'UNK'
+        self.UNKNOWN_TOKEN = '<UNK>'
+        self.SOS_TOKEN = '<SOS>'
+        self.EOS_TOKEN = '<EOS>'
+        self.MARK_TOKEN = '<MARK>'
+        self.PAD_TOKEN = '<PAD>'
 
-        self.word2index = {self.UNKNOWN_TOKEN:0}
-        self.index2word = [self.UNKNOWN_TOKEN]
-        self.word_counter = None
-        self.num_different_words = 1 # for UNKNOWN_TOKEN
+        self._init_vocab()  # initialize word2index, index2word
 
     def load_dataset(self, dataset_path, max_length=None):
-
-        '''
+        """
         Load the gossiping dataset and filter out the sentence whose length is larger then max_length.
-        
+
         :param dataset_path: the path to gossiping dataset 
         :param max_length: the length upper bound of q,a pairs. 
         :return: None
-        '''
-
+        """
         self.qa_pairs = []
 
         print("Loading the Gossiping dataset...")
@@ -42,34 +40,33 @@ class GossipingDataLoader(object):
             for line in dataset:
 
                 line = line.strip('\n')
-                question,answer = line.split('\t')
+                question, answer = line.split('\t')
 
                 if type(max_length) is int:
                     if len(question) > max_length or len(answer) > max_length:
                         continue
-                self.qa_pairs.append([question,answer])
+                self.qa_pairs.append([question, answer])
 
     def sample(self, sample_num=5):
-
-        '''
+        """
         Randomly sample q,a pairs
+
         :param sample_num: 
         :return: a list of q,a pairs
-        '''
+        """
         return random.sample(self.qa_pairs, sample_num)
 
     def calculate_word_frequency(self):
-
-        '''
+        """
         To calculate the frequency of each word/char(depend on doing word segment or not) in the qa pairs.  
-        :return: None
-        '''
 
+        :return: None
+        """
         print("Counting the word frequency...")
 
         self.word_counter = defaultdict(int)
 
-        for question,answer in self.qa_pairs:
+        for question, answer in self.qa_pairs:
 
             words_list = None
 
@@ -83,19 +80,17 @@ class GossipingDataLoader(object):
                 self.word_counter[word] += 1
 
     def build_onehot_encoding(self, unknown_bound=0):
-
-        '''
+        """
         :param sentence: 
         :param unknown_bound, target the char whose frequency is not larger unknown_bound as 'UNK'
         :return: None
-        '''
-
+        """
         assert self.qa_pairs is not None, "Please load the dataset before building the one-hot encoding."
 
         if unknown_bound != 0 and self.word_counter is None:
             self.calculate_word_frequency()
 
-        self._clean_encoding_history()
+        self._init_vocab()
         print("Building the onehot encoding...")
 
         for question, answer in self.qa_pairs:
@@ -103,12 +98,10 @@ class GossipingDataLoader(object):
             self._build_onehot_encoding(answer, unknown_bound)
 
     def word_to_encoding(self, word):
-
-        '''
+        """
         Transform the word to one-hot encoding.
         :return: the encoding
-        '''
-
+        """
         encoding = np.zeros(self.num_different_words)
         if word not in self.word2index:
             encoding[self.word2index[self.UNKNOWN_TOKEN]] = 1
@@ -118,30 +111,25 @@ class GossipingDataLoader(object):
         return encoding
 
     def encoding_to_word(self, encoding):
-
-        '''
+        """
         Transform the one-hot encoding to word.
         :return: the word
-        '''
-
+        """
         index = np.argmax(encoding)
         return self.index2word[index]
 
     def word_to_index(self, word):
-
         if word not in self.word2index:
             return self.word2index[self.self.UNKNOWN_TOKEN]
         else:
             return self.word2index[word]
 
     def index_to_word(self, index):
-
         assert index >= 0 and index < self.num_different_words, \
-            "[Index to Word] : Index %d out of range[0,%d]" % (index, self.num_different_words-1)
+            "[Index to Word] : Index %d out of range[0,%d]" % (index, self.num_different_words - 1)
         return self.index2word[index]
 
     def sentence_to_index(self, sentence):
-
         index = []
         words = self._word_segment(sentence)
 
@@ -150,25 +138,27 @@ class GossipingDataLoader(object):
         return index
 
     def index_to_sentence(self, index):
-
         sentence = ''
 
         for idx in index:
             sentence += self.index_to_word(idx)
         return sentence
 
-    def _clean_encoding_history(self):
-
-        self.word2index = {self.UNKNOWN_TOKEN:0}
-        self.index2word = [self.UNKNOWN_TOKEN]
-        self.num_different_words = 1
+    def _init_vocab(self):
+        self.word2index = {
+            self.PAD_TOKEN: 0,
+            self.SOS_TOKEN: 1,
+            self.EOS_TOKEN: 2,
+            self.MARK_TOKEN: 3,
+            self.UNKNOWN_TOKEN: 4
+        }
+        self.index2word = [self.PAD_TOKEN, self.SOS_TOKEN, self.EOS_TOKEN, self.MARK_TOKEN, self.UNKNOWN_TOKEN]
+        self.num_different_words = 5  # for UNKNOWN_TOKEN, SOS, EOS, MARK, PAD
 
     def _word_segment(self, sentence):
-
-        '''
+        """
         Return a word list segmented from sentence.
-        '''
-
+        """
         if self.word_segment:
             words = [word for word in jieba.cut(sentence)]
         else:
@@ -176,14 +166,12 @@ class GossipingDataLoader(object):
         return words
 
     def _build_onehot_encoding(self, sentence, unknown_bound):
-
-        '''
+        """
         build the relation between word and index.
         :param sentence: question or answer in the dataset.
         :param unknown_bound, target the char whose frequency is not larger unknown_bound as 'UNK'
         :return: None
-        '''
-
+        """
         words = self._word_segment(sentence)
 
         for word in words:
