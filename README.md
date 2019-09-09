@@ -6,7 +6,7 @@
 
 ## 資料說明
 
-資料集一共有兩份，您可於 [PTT Gossiping Corpus](https://www.kaggle.com/zake7749/pttgossipingcorpus) 或是從本專案的 `data` 資料夾裡取得。
+資料集一共有兩份，您可於 [PTT-Gossiping-Corpus](https://www.kaggle.com/zake7749/pttgossipingcorpus) 或是從本專案的 `data` 資料夾裡取得。
 
 ## Gossiping-QA-Dataset.txt
 
