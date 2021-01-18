@@ -3,7 +3,6 @@
 嗨，這裡是 PTT 中文語料集，我透過[某些假設與方法](https://github.com/zake7749/PTT-Chat-Generator) 將每篇文章化簡為問答配對，其中問題來自文章的標題，而回覆是該篇文章的推文。
 可惜的是目前這份資料集的噪聲還有點大，若您有更好的方法能提取出文章的問答配對，或發現這份資料集有什麼能改進的部份，還請與我聯繫，也祝各位開發順利 :>
 
-
 ## 資料說明
 
 資料集一共有兩份，您可於 [PTT-Gossiping-Corpus](https://www.kaggle.com/zake7749/pttgossipingcorpus) 或是從本專案的 `data` 資料夾裡取得。
@@ -46,7 +45,18 @@ qa_corpus.head()
 # 42228	迪士尼還有什麼片子適合拍成真人版	想說我剛剛不是進sex版啊...
 ```
 
-## 資料集資訊
+## Citation
 
-* `Explore-Gossiping-Dataset.ipynb` 提供了本資料集的基本資訊
-* `Intro-to-DataLoader.ipynb` 中介紹了本資料集附帶的 `GossipingDataLoader` 的基本功能
+If you think the dataset is helpful for your research, please cite our project:
+
+```
+@misc{
+    kai-chou yang_2019,
+    title={PTT-Gossiping-Corpus},
+    url={https://www.kaggle.com/dsv/676336},
+    DOI={10.34740/DVS/676336},
+    publisher={Kaggle},
+    author={Kai-Chou Yang},
+    year={2019}
+}
+```
